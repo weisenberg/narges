@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narges - Interactive Resume</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-color: #111;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+        }
+
+        /* Invisible scroll container to drive the animation */
+        #scroll-track {
+            height: 800vh;
+            /* Longer scroll for more content */
+            width: 100%;
+        }
+
+        .overlay-text {
+            position: fixed;
+            top: 50%;
+            left: 10%;
+            /* Default to left */
+            transform: translateY(-50%);
+            max-width: 400px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+            z-index: 10;
+        }
+
+        .overlay-text.right {
+            left: auto;
+            right: 10%;
+            text-align: right;
+        }
+
+        .overlay-text.center {
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 80%;
+            max-width: 800px;
+        }
+
+        .overlay-text.visible {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .overlay-text.center.visible {
+            transform: translate(-50%, -50%);
+        }
+
+        .overlay-text.hidden-left {
+            transform: translateY(-50%) translateX(-30px);
+        }
+
+        .overlay-text.hidden-right {
+            transform: translateY(-50%) translateX(30px);
+        }
+
+        /* Intro text specific styling for better contrast */
+        #text-intro {
+            /* Background removed as requested */
+            background: none;
+            backdrop-filter: none;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+            font-weight: 900;
+            /* Max bold for better outline */
+            letter-spacing: -0.02em;
+            color: white;
+            /* Black outline using text-shadow for better cross-browser support than text-stroke */
+            text-shadow:
+                2px 2px 0 #000,
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 300;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #fff;
+            /* White text */
+            margin-bottom: 0;
+            font-weight: 700;
+            /* Black outline for paragraph too */
+            text-shadow:
+                1px 1px 0 #000,
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+        }
+
+        /* Specific override for sections that might be against dark backgrounds later */
+        #text-growth p,
+        #text-resilience p,
+        #text-cv p {
+            color: #ccc;
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        #text-growth h2,
+        #text-resilience h2 {
+            color: #eee;
+        }
+
+        .cv-container {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: left;
+        }
+
+        .cv-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .cv-section h3 {
+            font-size: 1.2rem;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-size: 0.9rem;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+    </style>
+    <!-- Import map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <div id="canvas-container"></div>
+    <div class="loading" id="loading-text">Initializing world...</div>
+
+    <!-- Section 1: Intro -->
+    <div id="text-intro" class="overlay-text center hidden-left">
+        <h1>Hello, I'm Narges</h1>
+        <p>Welcome to my interactive portfolio. Scroll down to explore my journey.</p>
+    </div>
+
+    <!-- Section 2: Growth -->
+    <div id="text-growth" class="overlay-text right hidden-right">
+        <h2>Rooted in Knowledge</h2>
+        <p>Like this ancient tree, my expertise is built on a strong foundation of continuous learning and adaptation.
+        </p>
+    </div>
+
+    <!-- Section 3: Resilience -->
+    <div id="text-resilience" class="overlay-text hidden-left">
+        <h2>Branching Out</h2>
+        <p>I thrive in complex environments, extending my skills to solve diverse challenges in software engineering.
+        </p>
+    </div>
+
+    <!-- Section 4: CV -->
+    <div id="text-cv" class="overlay-text center hidden-right">
+        <div class="cv-container">
+            <h2>Curriculum Vitae</h2>
+            <div class="cv-section">
+                <h3>Experience</h3>
+                <p><strong>Senior Software Engineer</strong> | Tech Corp | 2020 - Present<br>
+                    Leading frontend architecture and 3D web experiences.</p>
+            </div>
+            <div class="cv-section">
+                <h3>Education</h3>
+                <p><strong>BS Computer Science</strong> | University of Tech | 2016 - 2020</p>
+            </div>
+            <div class="cv-section">
+                <h3>Skills</h3>
+                <p>JavaScript, Three.js, React, WebGL, Python</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="scroll-track"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            // Colors will be handled by gradient now
+            groundColor: 0x1a2e1a,
+            treeColor: 0x5d4037,
+            leafColor: 0x2e7d32,
+            lightColor: 0xffffff,
+        };
+
+        // --- Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+
+        // Create Gradient Sky
+        function createGradientTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+            const gradient = context.createLinearGradient(0, 0, 0, 512);
+            // Top: Bright Blue, Bottom: Sunny Yellow
+            // User requested "more blue" ratio
+            gradient.addColorStop(0, '#1E90FF'); // Dodger Blue (richer blue at top)
+            gradient.addColorStop(0.6, '#87CEEB'); // Sky Blue extends further down
+            gradient.addColorStop(0.85, '#FFD700'); // Yellow starts much lower
+            gradient.addColorStop(1, '#FDB813'); // Horizon remains golden
+
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 2, 512);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            return texture;
+        }
+
+        scene.background = createGradientTexture();
+
+        // Fog matches the horizon color
+        scene.fog = new THREE.FogExp2(0xFDB813, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Initial view: Low angle, looking up
+        camera.position.set(0, 1, 15);
+        camera.lookAt(0, 10, 0); // Look up at the tree/sky
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // --- Lighting ---
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffd700, 0.6); // White sky, yellow ground reflection
+        hemiLight.position.set(0, 50, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(CONFIG.lightColor, 1.5);
+        dirLight.position.set(20, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // --- Environment ---
+        const groundGeo = new THREE.PlaneGeometry(200, 200, 64, 64);
+
+        // Add some noise to ground
+        const posAttribute = groundGeo.attributes.position;
+        for (let i = 0; i < posAttribute.count; i++) {
+            const x = posAttribute.getX(i);
+            const y = posAttribute.getY(i);
+            const z = posAttribute.getZ(i);
+            // Simple noise
+            const h = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 1.5;
+            posAttribute.setZ(i, z + h);
+        }
+        groundGeo.computeVertexNormals();
+
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: CONFIG.groundColor,
+            roughness: 0.9,
+            metalness: 0.1,
+            flatShading: true
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grass & Rocks
+        function createEnvironment() {
+            const instancedGrass = new THREE.InstancedMesh(
+                new THREE.ConeGeometry(0.1, 0.4, 3),
+                new THREE.MeshStandardMaterial({ color: 0x4caf50, flatShading: true }),
+                2000
+            );
+
+            const dummy = new THREE.Object3D();
+            for (let i = 0; i < 2000; i++) {
+                const r = 5 + Math.random() * 40;
+                const theta = Math.random() * Math.PI * 2;
+                dummy.position.set(
+                    Math.cos(theta) * r,
+                    0,
+                    Math.sin(theta) * r
+                );
+                dummy.rotation.y = Math.random() * Math.PI;
+                dummy.scale.setScalar(0.5 + Math.random() * 1.5);
+                dummy.updateMatrix();
+                instancedGrass.setMatrixAt(i, dummy.matrix);
+            }
+            instancedGrass.receiveShadow = true;
+            scene.add(instancedGrass);
+
+            // Rocks
+            const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.8 });
+            for (let i = 0; i < 15; i++) {
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                const r = 4 + Math.random() * 20;
+                const theta = Math.random() * Math.PI * 2;
+                rock.position.set(Math.cos(theta) * r, 0.5, Math.sin(theta) * r);
+                rock.scale.setScalar(0.5 + Math.random());
+                rock.rotation.set(Math.random(), Math.random(), Math.random());
+                rock.castShadow = true;
+                rock.receiveShadow = true;
+                scene.add(rock);
+            }
+        }
+        createEnvironment();
+
+        // --- Sky Elements ---
+        const birds = [];
+        const planes = [];
+        const clouds = [];
+
+        function createSky() {
+            // Sun
+            const sunGeo = new THREE.SphereGeometry(5, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+            const sun = new THREE.Mesh(sunGeo, sunMat);
+            // Position sun where the directional light is roughly coming from
+            sun.position.set(40, 80, 40);
+            scene.add(sun);
+
+            // Clouds
+            const cloudGeo = new THREE.DodecahedronGeometry(1, 0);
+            const cloudMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.3,  // Smoother
+                metalness: 0.1,
+                flatShading: true,
+                emissive: 0x333333, // Slight glow to stay white
+            });
+
+            function createCloud() {
+                const cloudGroup = new THREE.Group();
+                const numBlobs = 4 + Math.floor(Math.random() * 4);
+
+                for (let i = 0; i < numBlobs; i++) {
+                    const blob = new THREE.Mesh(cloudGeo, cloudMat);
+                    // Wider spread for "wider" clouds
+                    blob.position.set(
+                        (Math.random() - 0.5) * 4, // Wider X
+                        (Math.random() - 0.5) * 1, // Flatter Y
+                        (Math.random() - 0.5) * 2
+                    );
+                    // Flattened blobs
+                    blob.scale.set(
+                        1.5 + Math.random() * 1.5, // Wide
+                        0.8 + Math.random() * 0.5, // Flat
+                        1 + Math.random()
+                    );
+                    blob.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                    cloudGroup.add(blob);
+                }
+                return cloudGroup;
+            }
+
+            for (let i = 0; i < 15; i++) {
+                const cloud = createCloud();
+                cloud.position.set(
+                    (Math.random() - 0.5) * 200,
+                    30 + Math.random() * 30,
+                    (Math.random() - 0.5) * 100 - 50 // Mostly background
+                );
+                cloud.userData = { speed: 0.02 + Math.random() * 0.03 };
+                scene.add(cloud);
+                clouds.push(cloud);
+            }
+
+            // Birds (Simple V shape)
+            const birdGeo = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                0.2, 0, 0.1,
+                0, 0, -0.1,
+                -0.2, 0, 0.1
+            ]);
+            birdGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            const birdMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+
+            for (let i = 0; i < 10; i++) {
+                const bird = new THREE.Mesh(birdGeo, birdMat);
+                bird.position.set(
+                    (Math.random() - 0.5) * 50,
+                    15 + Math.random() * 10,
+                    (Math.random() - 0.5) * 50
+                );
+                bird.userData = {
+                    speed: 0.1 + Math.random() * 0.1,
+                    angle: Math.random() * Math.PI * 2
+                };
+                scene.add(bird);
+                birds.push(bird);
+            }
+
+            // Airplane
+            const planeGroup = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2, 8), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            body.rotation.z = Math.PI / 2;
+            const wings = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 3), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+            planeGroup.add(body, wings);
+            planeGroup.position.set(-50, 40, -50);
+            planeGroup.scale.setScalar(0.5);
+            scene.add(planeGroup);
+            planes.push(planeGroup);
+        }
+        createSky();
+
+        // --- Tree Generation (Fallback) ---
+        function createProceduralTree() {
+            const treeGroup = new THREE.Group();
+            const materialBark = new THREE.MeshStandardMaterial({ color: CONFIG.treeColor, roughness: 0.9 });
+            const materialLeaves = new THREE.MeshStandardMaterial({ color: CONFIG.leafColor, roughness: 0.8 });
+
+            function buildBranch(height, radius, depth) {
+                const wrapper = new THREE.Object3D();
+                const geo = new THREE.CylinderGeometry(radius * 0.7, radius, height, 6);
+                geo.translate(0, height / 2, 0);
+                const mesh = new THREE.Mesh(geo, materialBark);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                wrapper.add(mesh);
+
+                if (depth > 0) {
+                    const numSub = 2 + Math.floor(Math.random() * 2);
+                    for (let i = 0; i < numSub; i++) {
+                        const subHeight = height * 0.75;
+                        const subRadius = radius * 0.7;
+                        const subBranch = buildBranch(subHeight, subRadius, depth - 1);
+                        subBranch.position.y = height * 0.95;
+                        subBranch.rotation.x = (Math.random() - 0.5) * 1.2;
+                        subBranch.rotation.z = (Math.random() - 0.5) * 1.2;
+                        subBranch.rotation.y = (Math.random() - 0.5) * 2;
+                        wrapper.add(subBranch);
+                    }
+                } else {
+                    const leafGeo = new THREE.IcosahedronGeometry(0.5, 0);
+                    const leaf = new THREE.Mesh(leafGeo, materialLeaves);
+                    leaf.position.y = height;
+                    leaf.scale.set(2, 2, 2);
+                    wrapper.add(leaf);
+                }
+                return wrapper;
+            }
+
+            const trunk = buildBranch(4, 0.8, 4);
+            treeGroup.add(trunk);
+            return treeGroup;
+        }
+
+        const tree = createProceduralTree();
+        scene.add(tree);
+        document.getElementById('loading-text').style.opacity = 0;
+
+        // --- Animation / Scroll Logic ---
+        let scrollPercent = 0;
+
+        // Sections definition (start/end in scroll percentage 0-1)
+        const sections = [
+            { id: 'text-intro', start: 0.0, end: 0.15 },
+            { id: 'text-growth', start: 0.25, end: 0.45 },
+            { id: 'text-resilience', start: 0.55, end: 0.75 },
+            { id: 'text-cv', start: 0.85, end: 1.0 }
+        ];
+
+        function onScroll() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.body.scrollHeight - window.innerHeight;
+            scrollPercent = scrollTop / docHeight;
+            scrollPercent = Math.max(0, Math.min(1, scrollPercent));
+
+            updateCamera();
+            updateOverlay();
+            // updateEnvironmentColors(); // Disabled to keep the sunny gradient
+        }
+
+        function updateCamera() {
+            // Define reusable vectors to avoid GC if possible, but for now local is fine
+            const targetPos = new THREE.Vector3();
+            const lookAtPos = new THREE.Vector3();
+
+            // Phase 1: Intro (0% - 15%)
+            // Start: Low angle, looking up (0, 1, 15) -> LookAt (0, 10, 0)
+            // End: Side view (0, 5, 20) -> LookAt (0, 5, 0)
+            if (scrollPercent < 0.15) {
+                const t = scrollPercent / 0.15; // Define t for interpolation
+
+                // Interpolate Position
+                // Start: (0, 1, 15)
+                // End: (0, 5, 20)
+                targetPos.set(
+                    0,
+                    1 + (5 - 1) * t,
+                    15 + (20 - 15) * t
+                );
+
+                // Interpolate LookAt
+                // Start: (0, 10, 0)
+                // End: (0, 5, 0)
+                lookAtPos.set(
+                    0,
+                    10 + (5 - 10) * t,
+                    0
+                );
+
+            } else if (scrollPercent < 0.85) {
+                // Phase 2: Orbit Tree (15% - 85%)
+                const t = (scrollPercent - 0.15) / 0.70;
+
+                const startRadius = 20;
+                const endRadius = 8;
+                const startHeight = 5;
+                const endHeight = 4;
+                const totalRotations = 2;
+
+                const radius = startRadius + (endRadius - startRadius) * t;
+                const height = startHeight + (endHeight - startHeight) * t;
+
+                // Offset angle by PI/2 so that at t=0, angle=PI/2 (Front view matches end of intro)
+                const angle = (t * Math.PI * 2 * totalRotations) + (Math.PI / 2);
+
+                targetPos.x = Math.cos(angle) * radius;
+                targetPos.z = Math.sin(angle) * radius;
+                targetPos.y = height;
+
+                lookAtPos.set(0, 5, 0); // Look at mid-tree
+
+            } else {
+                // Phase 3: CV Section (85% - 100%)
+                const t = (scrollPercent - 0.85) / 0.15; // 0 to 1
+
+                // End of orbit position (recalculate to ensure continuity)
+                const endRadius = 8;
+                const endHeight = 4;
+                const finalOrbitAngle = (1 * Math.PI * 2 * 2) + (Math.PI / 2);
+
+                const orbitEndPos = new THREE.Vector3(
+                    Math.cos(finalOrbitAngle) * endRadius,
+                    endHeight,
+                    Math.sin(finalOrbitAngle) * endRadius
+                );
+
+                // Final CV position
+                const cvPos = new THREE.Vector3(0, 2, 12);
+                const cvLook = new THREE.Vector3(0, 2, 0);
+
+                targetPos.copy(orbitEndPos).lerp(cvPos, t);
+                lookAtPos.set(0, 5, 0).lerp(cvLook, t);
+            }
+
+            camera.position.copy(targetPos);
+            camera.lookAt(lookAtPos);
+        }
+
+        function updateOverlay() {
+            sections.forEach(section => {
+                const el = document.getElementById(section.id);
+                if (scrollPercent >= section.start && scrollPercent <= section.end) {
+                    el.classList.add('visible');
+                    if (el.classList.contains('hidden-left')) el.classList.remove('hidden-left');
+                    if (el.classList.contains('hidden-right')) el.classList.remove('hidden-right');
+                } else {
+                    el.classList.remove('visible');
+                    // Reset transform direction based on scroll direction could be cool, 
+                    // but simple toggle is safer for now.
+                    if (el.id === 'text-intro' || el.id === 'text-resilience') el.classList.add('hidden-left');
+                    else el.classList.add('hidden-right');
+                }
+            });
+        }
+
+        function updateEnvironmentColors() {
+            // Day to Dusk transition
+            // 0.0 = Sky Blue
+            // 1.0 = Deep Purple/Orange dusk
+
+            const r = 135 / 255 * (1 - scrollPercent) + 40 / 255 * scrollPercent;
+            const g = 206 / 255 * (1 - scrollPercent) + 20 / 255 * scrollPercent;
+            const b = 235 / 255 * (1 - scrollPercent) + 60 / 255 * scrollPercent;
+
+            const color = new THREE.Color(r, g, b);
+            scene.background = color;
+            scene.fog.color = color;
+        }
+
+        window.addEventListener('scroll', onScroll);
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            onScroll();
+        }
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Animate Birds
+            birds.forEach(bird => {
+                bird.position.z += bird.userData.speed;
+                bird.position.y += Math.sin(clock.elapsedTime + bird.userData.angle) * 0.02;
+                // Reset if too far
+                if (bird.position.z > 50) bird.position.z = -50;
+
+                // Bank turn effect
+                bird.rotation.z = Math.sin(clock.elapsedTime * 2 + bird.userData.angle) * 0.2;
+            });
+
+            // Animate Plane
+            planes.forEach(plane => {
+                plane.position.x += 0.1;
+                if (plane.position.x > 50) plane.position.x = -50;
+            });
+
+            // Animate Clouds
+            clouds.forEach(cloud => {
+                cloud.position.x += cloud.userData.speed;
+                if (cloud.position.x > 100) cloud.position.x = -100;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        onScroll();
+        animate();
+
+    </script>
+</body>
+
+</html>
