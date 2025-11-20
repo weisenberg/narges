@@ -5,13 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Narges - Interactive Resume</title>
+    <!-- Google Fonts: Playfair Display (Nature/Elegant) and Lato (Clean/CV) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap"
+        rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            background-color: #111;
-            font-family: 'Inter', sans-serif;
+            background-color: transparent;
+            /* Removed #111 to allow blending with canvas */
+            font-family: 'Lato', sans-serif;
+            /* Clean body font for CV */
             color: white;
         }
 
@@ -22,6 +30,7 @@
             width: 100%;
             height: 100vh;
             z-index: -1;
+            /* Back to -1, standard */
         }
 
         /* Invisible scroll container to drive the animation */
@@ -84,47 +93,64 @@
             padding: 0;
             border: none;
             box-shadow: none;
+            /* Mix-blend-mode moved to children to ensure it works */
         }
 
         h1 {
-            font-size: 4rem;
+            font-family: 'Playfair Display', serif;
+            /* Elegant, nature-inspired */
+            font-size: 7rem;
+            /* Bigger */
             margin-bottom: 0.5rem;
             font-weight: 900;
             /* Max bold for better outline */
-            letter-spacing: -0.02em;
+            letter-spacing: -0.05em;
+            /* Less spacing (tighter) */
+            line-height: 0.9;
             color: white;
-            /* Black outline using text-shadow for better cross-browser support than text-stroke */
-            text-shadow:
-                2px 2px 0 #000,
-                -1px -1px 0 #000,
-                1px -1px 0 #000,
-                -1px 1px 0 #000,
-                1px 1px 0 #000;
+            text-shadow: none;
+            mix-blend-mode: difference;
+            /* Apply directly to text */
         }
 
         h2 {
-            font-size: 2rem;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
             margin-bottom: 1rem;
-            font-weight: 300;
+            font-weight: 700;
             color: #fff;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         p {
-            font-size: 1.2rem;
-            line-height: 1.6;
+            font-size: 1.5rem;
+            /* Bigger */
+            line-height: 1.4;
             color: #fff;
             /* White text */
             margin-bottom: 0;
             font-weight: 700;
-            /* Black outline for paragraph too */
-            text-shadow:
-                1px 1px 0 #000,
-                -1px -1px 0 #000,
-                1px -1px 0 #000,
-                -1px 1px 0 #000,
-                1px 1px 0 #000;
+            letter-spacing: -0.02em;
+            /* Tighter */
+            text-shadow: none;
+            mix-blend-mode: difference;
+            /* Apply directly to text */
         }
+
+        /* Re-apply shadows only for non-intro sections where mix-blend might not be used */
+        #text-growth h2,
+        #text-resilience h2,
+        #text-cv h2 {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #text-growth p,
+        #text-resilience p,
+        #text-cv p {
+            text-shadow: 1px 1px 0 #000;
+            /* Restore shadow for readability on these */
+        }
+
 
         /* Specific override for sections that might be against dark backgrounds later */
         #text-growth p,
@@ -255,12 +281,12 @@
             canvas.height = 512;
             const context = canvas.getContext('2d');
             const gradient = context.createLinearGradient(0, 0, 0, 512);
-            // Top: Bright Blue, Bottom: Sunny Yellow
-            // User requested "more blue" ratio
-            gradient.addColorStop(0, '#1E90FF'); // Dodger Blue (richer blue at top)
-            gradient.addColorStop(0.6, '#87CEEB'); // Sky Blue extends further down
-            gradient.addColorStop(0.85, '#FFD700'); // Yellow starts much lower
-            gradient.addColorStop(1, '#FDB813'); // Horizon remains golden
+            // User requested: "make the purple ration just a bit smaller"
+            gradient.addColorStop(0, '#240046'); // Dark Purple at Zenith (Top)
+            gradient.addColorStop(0.1, '#4B0082'); // Indigo (Moved up from 0.2 to 0.1)
+            gradient.addColorStop(0.3, '#1E90FF'); // Dodger Blue (Starts earlier, was 0.5)
+            gradient.addColorStop(0.98, '#87CEEB'); // Sky Blue (Dominates the lower half)
+            gradient.addColorStop(1, '#FDB813'); // Yellow ONLY at the very horizon line
 
             context.fillStyle = gradient;
             context.fillRect(0, 0, 2, 512);
@@ -272,13 +298,13 @@
 
         scene.background = createGradientTexture();
 
-        // Fog matches the horizon color
-        scene.fog = new THREE.FogExp2(0xFDB813, 0.002);
+        // Fog changed from Yellow to Sky Blue/Indigo to avoid "yellow wash"
+        scene.fog = new THREE.FogExp2(0x4B0082, 0.002);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // Initial view: Low angle, looking up
+        // Initial view: Low angle, looking up but slightly lower to see ground/lake
         camera.position.set(0, 1, 15);
-        camera.lookAt(0, 10, 0); // Look up at the tree/sky
+        camera.lookAt(0, 7, 0); // Lowered from 10 to 7 to bring horizon into view
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -287,7 +313,8 @@
         container.appendChild(renderer.domElement);
 
         // --- Lighting ---
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffd700, 0.6); // White sky, yellow ground reflection
+        // Ground reflection changed from Yellow to Dark Purple
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x240046, 0.6);
         hemiLight.position.set(0, 50, 0);
         scene.add(hemiLight);
 
@@ -303,16 +330,27 @@
         scene.add(dirLight);
 
         // --- Environment ---
-        const groundGeo = new THREE.PlaneGeometry(200, 200, 64, 64);
+        // Increased resolution to 128 for smoother terrain and better flattening precision
+        const groundGeo = new THREE.PlaneGeometry(200, 200, 128, 128);
 
-        // Add some noise to ground
+        // Add some noise to ground, but flatten under the lake
         const posAttribute = groundGeo.attributes.position;
         for (let i = 0; i < posAttribute.count; i++) {
             const x = posAttribute.getX(i);
-            const y = posAttribute.getY(i);
-            const z = posAttribute.getZ(i);
-            // Simple noise
-            const h = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 1.5;
+            const y = posAttribute.getY(i); // Maps to World -Z due to rotation
+            const z = posAttribute.getZ(i); // Maps to World Y (height) before rotation (which is 0)
+
+            // Lake Position: World (20, 10)
+            // Ground Rotation: x = -PI/2 => Local Y = -World Z
+            // So target Local Y = -10
+
+            const distToLake = Math.sqrt(Math.pow(x - 20, 2) + Math.pow(y - (-10), 2));
+
+            let h = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 1.5;
+            if (distToLake < 16) {
+                h = -0.5;
+            }
+
             posAttribute.setZ(i, z + h);
         }
         groundGeo.computeVertexNormals();
@@ -328,29 +366,139 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Grass & Rocks
+        // Lake
+        function createLake() {
+            const lakeGeo = new THREE.CircleGeometry(14, 32); // Bigger radius (14)
+            const lakeMat = new THREE.MeshStandardMaterial({
+                color: 0x0099ff, // Brighter Blue
+                roughness: 0.2,  // Less shiny, more diffuse color visibility
+                metalness: 0.1,  // Low metalness to show base color
+                transparent: true,
+                opacity: 0.9
+            });
+            const lake = new THREE.Mesh(lakeGeo, lakeMat);
+            lake.rotation.x = -Math.PI / 2;
+            lake.position.set(20, -0.2, 10); // Moved to 20, 10
+            scene.add(lake);
+            return lake;
+        }
+        const lake = createLake();
+
+        // Ducks
+        const ducks = [];
+        function createDucks() {
+            const duckGroup = new THREE.Group();
+
+            // Body
+            const bodyGeo = new THREE.CapsuleGeometry(0.3, 0.6, 4, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff }); // White duck
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.rotation.z = Math.PI / 2;
+            body.rotation.y = Math.PI / 2;
+
+            // Neck/Head
+            const headGeo = new THREE.SphereGeometry(0.25, 8, 8);
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.set(0.4, 0.4, 0);
+
+            // Beak
+            const beakGeo = new THREE.ConeGeometry(0.08, 0.2, 8);
+            const beakMat = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Orange beak
+            const beak = new THREE.Mesh(beakGeo, beakMat);
+            beak.rotation.z = -Math.PI / 2;
+            beak.position.set(0.6, 0.4, 0);
+
+            duckGroup.add(body, head, beak);
+            return duckGroup;
+        }
+
+        for (let i = 0; i < 5; i++) { // Increased ducks to 5
+            const duck = createDucks();
+            // Position on lake
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 3 + Math.random() * 10; // Wider range for bigger lake
+            duck.position.set(
+                20 + Math.cos(angle) * radius,
+                -0.2, // Match lake height
+                10 + Math.sin(angle) * radius
+            );
+            duck.rotation.y = Math.random() * Math.PI * 2;
+            duck.userData = {
+                angle: angle,
+                radius: radius,
+                speed: 0.002 + Math.random() * 0.002, // Slower speed (was 0.005)
+                bobOffset: Math.random() * Math.PI
+            };
+            scene.add(duck);
+            ducks.push(duck);
+        }
+
+        // Grass & Rocks with Wind
+        let grassMaterial;
         function createEnvironment() {
+            // Custom shader for wind
+            const vertexShader = `
+                varying vec2 vUv;
+                uniform float time;
+                
+                void main() {
+                    vUv = uv;
+                    vec3 pos = position;
+                    
+                    // Simple wind effect: sway top vertices based on height (y) and time
+                    // Only sway if y > 0.1 (top of blade)
+                    float sway = sin(time * 2.0 + instanceMatrix[3][0] * 0.5) * 0.1 * pos.y;
+                    pos.x += sway;
+                    
+                    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                varying vec2 vUv;
+                
+                void main() {
+                    vec3 color = vec3(0.3, 0.7, 0.3); // Base green
+                    // Darker at bottom
+                    color *= 0.5 + 0.5 * vUv.y; 
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            grassMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 }
+                },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                side: THREE.DoubleSide
+            });
+
             const instancedGrass = new THREE.InstancedMesh(
-                new THREE.ConeGeometry(0.1, 0.4, 3),
-                new THREE.MeshStandardMaterial({ color: 0x4caf50, flatShading: true }),
-                2000
+                new THREE.PlaneGeometry(0.1, 0.5, 1, 4), // Plane is lighter than Cone
+                grassMaterial,
+                5000 // More grass
             );
 
             const dummy = new THREE.Object3D();
-            for (let i = 0; i < 2000; i++) {
-                const r = 5 + Math.random() * 40;
+            for (let i = 0; i < 5000; i++) {
+                const r = 2 + Math.random() * 40;
                 const theta = Math.random() * Math.PI * 2;
-                dummy.position.set(
-                    Math.cos(theta) * r,
-                    0,
-                    Math.sin(theta) * r
-                );
+
+                // Avoid lake area (Center 20, 10, Radius ~14)
+                const x = Math.cos(theta) * r;
+                const z = Math.sin(theta) * r;
+                const distToLake = Math.sqrt(Math.pow(x - 20, 2) + Math.pow(z - 10, 2));
+
+                if (distToLake < 17) continue; // Increased exclusion radius (14 + padding)
+
+                dummy.position.set(x, 0.25, z); // Center y is 0.25 for height 0.5
                 dummy.rotation.y = Math.random() * Math.PI;
-                dummy.scale.setScalar(0.5 + Math.random() * 1.5);
+                dummy.scale.setScalar(0.8 + Math.random() * 0.5);
                 dummy.updateMatrix();
                 instancedGrass.setMatrixAt(i, dummy.matrix);
             }
-            instancedGrass.receiveShadow = true;
+            instancedGrass.receiveShadow = true; // Shadow might not work well with custom shader without depth mat, but ok for now
             scene.add(instancedGrass);
 
             // Rocks
@@ -360,7 +508,13 @@
                 const rock = new THREE.Mesh(rockGeo, rockMat);
                 const r = 4 + Math.random() * 20;
                 const theta = Math.random() * Math.PI * 2;
-                rock.position.set(Math.cos(theta) * r, 0.5, Math.sin(theta) * r);
+
+                const x = Math.cos(theta) * r;
+                const z = Math.sin(theta) * r;
+                const distToLake = Math.sqrt(Math.pow(x - 20, 2) + Math.pow(z - 10, 2));
+                if (distToLake < 18) continue; // Even larger exclusion for rocks
+
+                rock.position.set(x, 0.5, z);
                 rock.scale.setScalar(0.5 + Math.random());
                 rock.rotation.set(Math.random(), Math.random(), Math.random());
                 rock.castShadow = true;
@@ -369,6 +523,44 @@
             }
         }
         createEnvironment();
+
+        // Bird Nest
+        function createNest() {
+            const nestGroup = new THREE.Group();
+
+            // Nest structure (Torus)
+            const nestGeo = new THREE.TorusGeometry(0.6, 0.2, 8, 16);
+            const nestMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 1.0 }); // Brown twigs
+            const nest = new THREE.Mesh(nestGeo, nestMat);
+            nest.rotation.x = Math.PI / 2;
+            nestGroup.add(nest);
+
+            // Eggs
+            const eggGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const eggMat = new THREE.MeshStandardMaterial({ color: 0xe0f7fa }); // Light blue speckled
+
+            const egg1 = new THREE.Mesh(eggGeo, eggMat);
+            egg1.position.set(0.1, 0.1, 0);
+            egg1.scale.y = 1.2; // Oval
+
+            const egg2 = new THREE.Mesh(eggGeo, eggMat);
+            egg2.position.set(-0.1, 0.1, 0.1);
+            egg2.rotation.z = 0.5;
+            egg2.scale.y = 1.2;
+
+            const egg3 = new THREE.Mesh(eggGeo, eggMat);
+            egg3.position.set(0, 0.1, -0.1);
+            egg3.rotation.x = -0.5;
+            egg3.scale.y = 1.2;
+
+            nestGroup.add(egg1, egg2, egg3);
+
+            // Place on a branch (Hardcoded position based on tree logic knowledge or trial)
+            // Tree trunk is at 0,0,0. First branch likely around y=3-4.
+            nestGroup.position.set(1.2, 3.8, 0.5);
+            scene.add(nestGroup);
+        }
+        createNest();
 
         // --- Sky Elements ---
         const birds = [];
@@ -561,7 +753,7 @@
                 // End: (0, 5, 0)
                 lookAtPos.set(
                     0,
-                    10 + (5 - 10) * t,
+                    7 + (5 - 7) * t, // Updated start to 7
                     0
                 );
 
@@ -684,6 +876,22 @@
                 cloud.position.x += cloud.userData.speed;
                 if (cloud.position.x > 100) cloud.position.x = -100;
             });
+
+            // Animate Ducks
+            ducks.forEach(duck => {
+                duck.userData.angle += duck.userData.speed;
+                duck.position.x = 20 + Math.cos(duck.userData.angle) * duck.userData.radius;
+                duck.position.z = 10 + Math.sin(duck.userData.angle) * duck.userData.radius;
+                duck.rotation.y = -duck.userData.angle; // Face direction of travel
+
+                // Bobbing (Base height -0.2)
+                duck.position.y = -0.2 + Math.sin(clock.elapsedTime * 2 + duck.userData.bobOffset) * 0.05;
+            });
+
+            // Update Wind
+            if (grassMaterial) {
+                grassMaterial.uniforms.time.value = clock.elapsedTime;
+            }
 
             renderer.render(scene, camera);
         }
